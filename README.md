@@ -1,6 +1,6 @@
 ### Full Stack Software as a service
 
-Full Stack Project Management SPA with react 18, typescript, tailwindcss, inertia, Dokcer and Laravel 11
+Full Stack software as a service with react 18, typescript, tailwindcss, inertia, Dokcer and Laravel 11
 
 ![My logo](public/img/2024-06-23_21-120.png)
 
