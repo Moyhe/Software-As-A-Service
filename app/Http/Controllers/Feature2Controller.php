@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\FeatureResource;
+use App\Interfaces\Calculation;
 use App\Models\Feature;
 use App\Models\UsedFeature;
 use Illuminate\Http\Request;
 
-class Feature2Controller extends Controller
+class Feature2Controller extends Controller implements Calculation
 {
     public ?Feature $feature = null;
 

@@ -61,3 +61,4 @@ Access to the docker container
 3. Show dashboard with overview information
 4. payment integration using stripe to buy credits
 5. pagination for features
+6. notification

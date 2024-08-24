@@ -30,12 +30,12 @@ const Index = ({ features, packages, success, error }: Props) => {
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     {success && (
-                        <div className="rounded-lg mb-4 p-3 rounded text-gray-100 bg-emerald-600">
+                        <div className="rounded-lg mb-4 p-3 text-gray-100 bg-emerald-600">
                             {success}
                         </div>
                     )}
                     {error && (
-                        <div className="rounded-lg mb-4 p-3 rounded text-gray-100 bg-red-500">
+                        <div className="mb-4 p-3 rounded text-gray-100 bg-red-500">
                             {error}
                         </div>
                     )}
