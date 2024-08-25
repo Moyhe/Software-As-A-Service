@@ -49,7 +49,7 @@ class CreditController extends Controller
             'cancel_url' => route('credit.cancel', [], true)
         ]);
 
-        Transaction::create([
+        $transaction =  Transaction::create([
             'status' => 'pending',
             'price' => $package->price,
             'credits' => $package->credits,
@@ -57,6 +57,13 @@ class CreditController extends Controller
             'user_id' => Auth::id(),
             'package_id' => $package->id
         ]);
+
+
+        $transaction->status = 'paid';
+        $transaction->save();
+
+        $transaction->user->available_credits += $transaction->credits;
+        $transaction->user->save();
 
         return redirect($checkout_session->url);
     }
