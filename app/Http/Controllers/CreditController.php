@@ -127,24 +127,27 @@ class CreditController extends Controller
             return response('', 400);
         }
 
-        switch ($event->type) {
-            case 'checkout.session.completed':
-                $session =  $event->data->object;
+        DB::transaction(function () use ($event) {
 
-                $transaction = Transaction::query()->where('session_id', $session->id)->first();
+            switch ($event->type) {
+                case 'checkout.session.completed':
+                    $session =  $event->data->object;
 
-                if ($transaction && $transaction->status === 'pending') {
-                    $transaction->status = 'paid';
-                    $transaction->save();
+                    $transaction = Transaction::query()->where('session_id', $session->id)->first();
 
-                    $transaction->user->available_credits += $transaction->credits;
-                    $transaction->user->save();
-                }
-                break;
-            default:
-                echo 'recived unknown type' . $event->type;
-                break;
-        }
+                    if ($transaction && $transaction->status === 'pending') {
+                        $transaction->status = 'paid';
+                        $transaction->save();
+
+                        $transaction->user->available_credits += $transaction->credits;
+                        $transaction->user->save();
+                    }
+                    break;
+                default:
+                    echo 'recived unknown type' . $event->type;
+                    break;
+            }
+        });
 
         return response('');
     }
