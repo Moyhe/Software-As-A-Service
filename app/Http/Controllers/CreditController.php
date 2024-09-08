@@ -7,8 +7,12 @@ use App\Http\Resources\PackageResource;
 use App\Models\Feature;
 use App\Models\Package;
 use App\Models\Transaction;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class CreditController extends Controller
 {
@@ -31,46 +35,74 @@ class CreditController extends Controller
 
         $strip = new \Stripe\StripeClient(env('STRIPE_SECRET_KEY'));
 
-        $checkout_session = $strip->checkout->sessions->create([
-            'line_items' => [
-                [
-                    'price_data' => [
-                        'currency' => 'USD',
-                        'unit_amount' => $package->price * 100,
-                        'product_data' => [
-                            'name' => $package->name . '-' . $package->credits . 'credits'
+        DB::beginTransaction();
+
+        try {
+            $checkout_session = $strip->checkout->sessions->create([
+                'line_items' => [
+                    [
+                        'price_data' => [
+                            'currency' => 'USD',
+                            'unit_amount' => $package->price * 100,
+                            'product_data' => [
+                                'name' => $package->name . '-' . $package->credits . 'credits'
+                            ],
                         ],
-                    ],
-                    'quantity' => 1
-                ]
-            ],
-            'mode' => 'payment',
-            'success_url' => route('credit.success', [], true),
-            'cancel_url' => route('credit.cancel', [], true)
-        ]);
-
-        $transaction =  Transaction::create([
-            'status' => 'pending',
-            'price' => $package->price,
-            'credits' => $package->credits,
-            'session_id' => $checkout_session->id,
-            'user_id' => Auth::id(),
-            'package_id' => $package->id
-        ]);
+                        'quantity' => 1
+                    ]
+                ],
+                'mode' => 'payment',
+                'success_url' => route('credit.success', [], true) . "?session_id={CHECKOUT_SESSION_ID}",
+                'cancel_url' => route('credit.cancel', [], true)
+            ]);
 
 
-        $transaction->status = 'paid';
-        $transaction->save();
+            Transaction::create([
+                'status' => 'pending',
+                'price' => $package->price,
+                'credits' => $package->credits,
+                'session_id' => $checkout_session->id,
+                'user_id' => Auth::id(),
+                'package_id' => $package->id
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
 
-        $transaction->user->available_credits += $transaction->credits;
-        $transaction->user->save();
+            Log::critical(__METHOD__ . 'method does not work' . $e->getMessage());
+        }
+
+        DB::commit();
 
         return redirect($checkout_session->url);
     }
 
     public function success()
     {
-        return to_route('credit.index')->with('success', 'you successfully bought new creidts');
+
+        \Stripe\Stripe::setApiKey(env('STRIPE_SECRET_KEY'));
+        $sessionId = request()->get('session_id');
+
+        try {
+            $session = \Stripe\Checkout\Session::retrieve($sessionId);
+            if (!$session) {
+                throw new NotFoundHttpException();
+            }
+
+            $transaction = Transaction::where('session_id', $session->id)->first();
+            if (!$transaction) {
+                throw new ModelNotFoundException();
+            }
+            if ($transaction->status === 'pending') {
+                $transaction->status = 'paid';
+                $transaction->save();
+
+                $transaction->user->available_credits += $transaction->credits;
+                $transaction->user->save();
+            }
+            return to_route('credit.index')->with('success', 'you successfully bought new creidts');
+        } catch (\Exception $e) {
+            throw new NotFoundHttpException();
+        }
     }
 
     public function cancel()
